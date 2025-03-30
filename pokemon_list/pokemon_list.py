@@ -2,7 +2,7 @@
     Created by jrkinch
     Project for scrapping pokemon names.
     Data Source: "https://m.bulbapedia.bulbagarden.net/wiki/List_of_Pok%C3%A9mon_by_National_Pok%C3%A9dex_number"
-        
+    
 '''
 from selenium import webdriver
 from selenium.webdriver.common.by import By 
@@ -55,39 +55,28 @@ class PokemonList():
         
     def get_site_pokemon_list_data(self):
         '''
-            This grabs the table with all of the pokemon text info but 'src' image data is not included in cell row.
+            This grabs the table with all of the pokemon text info but 'src' image data is not included in cell row. Getting src image text through 'link' variable and attaching to the blank cell because it is the only cell the cell.text returns blank.
         '''
         self.pokemon_list = []
         self.image_list = []
         tables = self.driver.find_elements(by=By.CLASS_NAME, value="roundy")
         for table in tables:
-            rows  = table.find_elements(by=By.XPATH, value='.//tr')
-            links = table.find_elements(by=By.TAG_NAME, value="img")
-            for r in rows:
-                cells = r.find_elements(by=By.XPATH, value='.//td')
+            rows  = table.find_elements(by=By.XPATH, value='.//tr')        
+            for index, r in enumerate(rows):
+                cells = r.find_elements(by=By.XPATH, value='.//td')   
                 pokemon_row = []
                 for cell in cells:
-                    pokemon_row.append(cell.text)
+                    link = r.find_element(by=By.TAG_NAME, value="img")
+                    if cell.text == "": #cell.text doesn't get img src so this attachs src image text to only cell that doesn't have text
+                        pokemon_row.append(link.get_attribute("src")) 
+                    else:
+                        pokemon_row.append(cell.text)
                 try:
                     if '#' in pokemon_row[0]:
                         self.pokemon_list.append(pokemon_row)
                 except Exception as e:
                     print("Error: ", e)
-        
-            #Gets the image data for the pokemon list table data to merge later.
-            variates = ['Alola', 'Galar', 'Hisui', 'Paldea']
-            for l in links:
-                if not any(variate in l.get_attribute("src") for variate in variates):
-                    self.image_list.append(l.get_attribute("src"))
 
-    def set_image_list_to_pokemon_data(self):
-        '''
-            Put images in image_list in pokemon_list data table.
-        '''
-        for image in self.image_list:
-            for index, pokemon in enumerate(self.pokemon_list): 
-                if pokemon[0][1:] in image: #uses the pokedex number excluding the '#' char.
-                    pokemon[1] = image
                     
     def save_to_file(self):
         '''
@@ -102,9 +91,6 @@ class PokemonList():
         '''
         #Grab Pokemon info.
         self.get_site_pokemon_list_data()
-        
-        #Put images in image_list in pokemon data table.
-        self.set_image_list_to_pokemon_data()
         
         #Put data to file.
         self.save_to_file()
@@ -125,13 +111,17 @@ class PokemonList():
             #Checking data file and site for same amount number.
             siteAmount = self.get_site_list_amount()
             if fileAmount == siteAmount:
-                print("Data is up to date.")
+                print("Pokémon list data is up to date.")
             else:
                 #get info again
-                print("Data is different, need to update...")
+                print("Pokémon list data is different, needs to update...")
+                print("Updating Pokémon list data...")
                 self.get_and_set_data()
+                print("Pokémon list data completed.")
         else:
+            print("Retrieving Pokémon list data...")
             self.get_and_set_data()
+            print("Pokémon list data completed.")
         
         #close the webdriver.
         self.cleanup()
